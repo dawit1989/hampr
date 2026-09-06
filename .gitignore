@@ -1,0 +1,24 @@
+# Build artifacts
+build/
+*.o
+*.o.d
+
+# Executables
+*.exe
+benchmark_app
+test_core
+test_dsp
+test_dsp_extended
+test_regression
+test_accel
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

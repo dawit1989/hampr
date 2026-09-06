@@ -1,0 +1,85 @@
+====================== Processing Time Index 494 ======================
+
+Target range cell ref/found [103/110]
+Target Doppler cell ref/found [168/167]
+Target azimuth ref/found [84.4083/72]
+Target SINR 9.1824
+
+Time to isolate channels: 0.0230687 seconds
+Time for beamforming: 0.05172 seconds
+Time to perform time-domain filter surveillance: 0.178737 seconds
+Time to detect: 0.0197273 seconds
+Time to find target: 0.000290996 seconds
+Time to estimate direction of arrival: 0.553444 seconds
+Total time to process: 0.830705 seconds
+
+====================== Processing Time Index 495 ======================
+
+Target range cell ref/found [103/99]
+Target Doppler cell ref/found [168/170]
+Target azimuth ref/found [84.4083/67]
+Target SINR 7.6557
+
+Time to isolate channels: 0.0126004 seconds
+Time for beamforming: 0.0373134 seconds
+Time to perform time-domain filter surveillance: 0.173445 seconds
+Time to detect: 0.025852 seconds
+Time to find target: 0.000286025 seconds
+Time to estimate direction of arrival: 0.624616 seconds
+Total time to process: 0.877335 seconds
+
+====================== Processing Time Index 496 ======================
+
+Target range cell ref/found [103/109]
+Target Doppler cell ref/found [168/160]
+Target azimuth ref/found [84.4083/67]
+Target SINR 9.00417
+
+Time to isolate channels: 0.0123225 seconds
+Time for beamforming: 0.0347591 seconds
+Time to perform time-domain filter surveillance: 0.17375 seconds
+Time to detect: 0.0258781 seconds
+Time to find target: 0.0003003 seconds
+Time to estimate direction of arrival: 0.640566 seconds
+Total time to process: 0.891171 seconds
+
+====================== Processing Time Index 497 ======================
+
+Target range cell ref/found [103/98]
+Target Doppler cell ref/found [168/172]
+Target azimuth ref/found [84.4083/66]
+Target SINR 7.05235
+
+Time to isolate channels: 0.0118634 seconds
+Time for beamforming: 0.0302348 seconds
+Time to perform time-domain filter surveillance: 2.10526 seconds
+Time to detect: 0.039792 seconds
+Time to find target: 0.000456121 seconds
+Time to estimate direction of arrival: 0.631754 seconds
+Total time to process: 2.82527 seconds
+
+====================== Processing Time Index 498 ======================
+
+Target range cell ref/found [103/106]
+Target Doppler cell ref/found [168/172]
+Target azimuth ref/found [84.4083/66]
+Target SINR 9.02792
+
+Time to isolate channels: 0.0146006 seconds
+Time for beamforming: 0.039868 seconds
+Time to perform time-domain filter surveillance: 0.176096 seconds
+Time to detect: 0.0223848 seconds
+Time to find target: 0.000352558 seconds
+Time to estimate direction of arrival: 0.620997 seconds
+Total time to process: 0.877212 seconds
+
+====================== RESULTS SUMMARY ======================
+
+Avg time to isolate channels: 0.0148911 seconds
+Avg time for beamforming: 0.0387791 seconds
+Avg time to perform time-domain filter surveillance: 0.561457 seconds
+Avg time to detect: 0.0267268 seconds
+Avg time to find target: 0.0003372 seconds
+Avg time to estimate direction of arrival: 0.614275 seconds
+Avg total time to process single time index: 1.26034 seconds
+
