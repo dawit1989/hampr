@@ -13,6 +13,20 @@ HAMPR processes passive radar IQ data through a six-stage pipeline:
 5. **Target Finding** — Peak search in Range-Doppler map
 6. **DOA Estimation** — MUSIC with eigen decomposition
 
+### Phase 7: Multi-Antenna / Multi-Receiver Scaling
+
+HAMPR supports multi-site, multi-antenna passive radar networks:
+
+- **MultiSiteDataSource** — Loads IQ data from multiple receiver sites with JSON metadata
+- **Synchronizer** — Clock offset correction and gain/phase calibration
+- **ArrayGeometry** — Generalized scanning vectors for ULA, UCA, URA, and arbitrary arrays
+- **MultiSitePipeline** — Per-site processing with cross-site fusion and TDoA localization
+- **ResultFusion** — Bearing intersection and SINR-weighted combination
+- **TDoALocalizer** — TDoA cross-correlation with WGS84/ECEF geolocation
+- **MultiSiteGraph** — Streaming scheduler for multi-site batch processing
+
+Single-site mode is fully backward-compatible: when `Config::multi_site_receivers` is empty, output is identical to the single-site `Pipeline`.
+
 ## Requirements
 
 - C++17 compiler (GCC, Clang, MSVC)
@@ -70,10 +84,12 @@ cd build && ctest
 hampr/
   CMakeLists.txt              # Build system
   PLAN.md                     # Engineering plan (all phases)
+  PLAN_PHASE7.md              # Phase 7 detailed implementation plan
   include/hampr/
     core/
       types.hpp               # Type aliases (complex, array, mat, etc.)
-      config.hpp              # Config struct
+      config.hpp              # Config struct (with multi-site fields)
+      multi_site_types.hpp    # Multi-site data types
       flat_buffer.hpp         # Flat buffer data model (GPU-compatible)
     accel/
       fft_backend.hpp         # FFT backend interface
@@ -81,12 +97,21 @@ hampr/
       sycl_fft_backend.hpp    # SYCL FFT backend
       sycl_linalg_backend.hpp # SYCL LinAlg backend
       opencl_fft_backend.hpp  # OpenCL fallback FFT backend
-    dsp/                      # 6 DSP stage classes
+    dsp/                      # DSP stage classes + multi-site components
+      array_geometry.hpp      # ULA, UCA, URA, arbitrary array geometries
+      synchronizer.hpp        # Clock sync and calibration
+      fusion.hpp              # Cross-site bearing fusion
+      localization.hpp        # TDoA geolocation
+      multi_site_pipeline.hpp # Multi-site pipeline orchestrator
     io/                       # DataSource/DataSink abstractions
-    utils/                    # Math, FFTW, LinAlg utilities
-  src/dsp/                    # 6 stage implementations
+      multi_site_data_source.hpp # Multi-site data loading
+    utils/                    # Math, FFTW, LinAlg, JSON utilities
+    pipeline/                 # Pipeline schedulers
+      multi_site_graph.hpp    # Multi-site streaming scheduler
+  src/dsp/                    # DSP stage + multi-site implementations
   src/accel/                  # Backend implementations
   src/io/                     # I/O implementations
+  src/pipeline/               # Pipeline scheduler implementations
   tests/                      # Unit and regression tests
   examples/                   # Benchmark application
 ```
@@ -117,6 +142,20 @@ Backend selection is compile-time via `HAMPR_GPU_BACKEND` preprocessor macro:
 - Improved CPU cache locality
 - Conversion to/from `mat`/`array` via `from_mat()`/`to_mat()`
 
+## Multi-Site Architecture
+
+```
+MultiSiteDataSource -> Synchronizer -> MultiSitePipeline -> MultiSiteGraph
+       |                |               |
+       |                |               +-> [Pipeline x N] -> ResultFusion -> TDoALocalizer
+       |                |                   (per-site)       |
+       |                |                                     -> MultiSiteResult
+       |                |
+       |                +-> clock_offset, gain, phase calibration
+       |
+       +-> JSON metadata (receiver positions, array geometry)
+```
+
 ## Testing
 
 | Test | Description |
@@ -126,6 +165,8 @@ Backend selection is compile-time via `HAMPR_GPU_BACKEND` preprocessor macro:
 | `test_dsp_extended` | Extended DSP tests including FFT round-trip |
 | `test_regression` | Full pipeline on VEGA dataset |
 | `test_accel` | Backend consistency and flat buffer tests |
+| `test_streaming` | Phase 5 streaming (BufferPool, StreamingDataSource) |
+| `test_multi_site` | Phase 7 multi-site (ArrayGeometry, Synchronizer, Fusion, TDoA) |
 
 ## License
 

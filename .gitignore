@@ -23,3 +23,5 @@ test_accel
 .DS_Store
 Thumbs.db
 wsl_build/
+
+test_multi_site

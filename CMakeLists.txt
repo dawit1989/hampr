@@ -31,12 +31,19 @@ set(HAMPR_SOURCES
     src/dsp/detector.cpp
     src/dsp/doa_estimator.cpp
     src/dsp/metric_extractor.cpp
+    src/dsp/array_geometry.cpp
+    src/dsp/synchronizer.cpp
+    src/dsp/fusion.cpp
+    src/dsp/localization.cpp
+    src/dsp/multi_site_pipeline.cpp
     src/dsp/pipeline.cpp
     src/io/text_data_source.cpp
     src/io/console_sink.cpp
     src/io/file_sink.cpp
+    src/io/multi_site_data_source.cpp
     src/io/streaming_source.cpp
     src/pipeline/graph.cpp
+    src/pipeline/multi_site_graph.cpp
     src/accel/fftw_backend.cpp
     src/accel/eigen_backend.cpp
 )
@@ -100,6 +107,9 @@ if(HAMPR_BUILD_TESTS)
     add_executable(test_streaming tests/test_streaming.cpp)
     target_link_libraries(test_streaming PRIVATE hampr)
     add_test(NAME test_streaming COMMAND test_streaming)
+    add_executable(test_multi_site tests/test_multi_site.cpp)
+    target_link_libraries(test_multi_site PRIVATE hampr)
+    add_test(NAME test_multi_site COMMAND test_multi_site)
 endif()
 
 install(TARGETS hampr
@@ -109,4 +119,3 @@ install(TARGETS hampr
 install(DIRECTORY include/hampr
     DESTINATION include
 )
-
