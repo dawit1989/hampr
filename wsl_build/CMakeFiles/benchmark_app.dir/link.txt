@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/benchmark_app.dir/examples/benchmark_app.cpp.o -o bin/benchmark_app  libhampr.a /usr/lib/x86_64-linux-gnu/libfftw3.so 

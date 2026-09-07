@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/test_core.dir/tests/test_core.cpp.o -o test_core  libhampr.a /usr/lib/x86_64-linux-gnu/libfftw3.so 

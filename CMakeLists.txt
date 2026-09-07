@@ -35,6 +35,8 @@ set(HAMPR_SOURCES
     src/io/text_data_source.cpp
     src/io/console_sink.cpp
     src/io/file_sink.cpp
+    src/io/streaming_source.cpp
+    src/pipeline/graph.cpp
     src/accel/fftw_backend.cpp
     src/accel/eigen_backend.cpp
 )
@@ -95,6 +97,9 @@ if(HAMPR_BUILD_TESTS)
     add_executable(test_accel tests/test_accel.cpp)
     target_link_libraries(test_accel PRIVATE hampr)
     add_test(NAME test_accel COMMAND test_accel)
+    add_executable(test_streaming tests/test_streaming.cpp)
+    target_link_libraries(test_streaming PRIVATE hampr)
+    add_test(NAME test_streaming COMMAND test_streaming)
 endif()
 
 install(TARGETS hampr
