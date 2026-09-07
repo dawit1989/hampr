@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/test_regression.dir/tests/test_regression.cpp.o -o test_regression  libhampr.a /usr/lib/x86_64-linux-gnu/libfftw3.so 

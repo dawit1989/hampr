@@ -22,3 +22,4 @@ test_accel
 # OS files
 .DS_Store
 Thumbs.db
+wsl_build/
