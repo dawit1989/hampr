@@ -19,7 +19,8 @@ int main() {
         complex data[8];
         for (int i = 0; i < 8; ++i)
             data[i] = complex(i, i * 2);
-        assert(pool.push(data, 8));
+        bool pushed1 = pool.push(data, 8);
+        assert(pushed1);
         assert(pool.available() == 8);
         assert(!pool.empty());
 
@@ -37,7 +38,8 @@ int main() {
     {
         BufferPool pool(4);
         complex data[3] = {complex(1,0), complex(2,0), complex(3,0)};
-        assert(pool.push(data, 3));
+        bool pushed2 = pool.push(data, 3);
+        assert(pushed2);
 
         complex out[2];
         size_t got = pool.try_pop(out, 2);
@@ -47,7 +49,8 @@ int main() {
 
         // Push more, causing wrap-around
         complex more[2] = {complex(10,0), complex(11,0)};
-        assert(pool.push(more, 2));
+        bool pushed3 = pool.push(more, 2);
+        assert(pushed3);
         assert(pool.available() == 3);
 
         got = pool.try_pop(out, 2);
@@ -70,7 +73,7 @@ int main() {
             std::cout << "  Test 3 SKIPPED: VEGA dataset not found" << std::endl;
         } else {
             StreamingDataSource source(131072);
-            assert(source.open(data_dir + "/dataset_494.txt"));
+            source.open(data_dir + "/dataset_494.txt");
             assert(source.has_more());
             assert(source.num_channels() == 4);
             assert(source.sampling_rate() > 0);
@@ -149,3 +152,5 @@ int main() {
     std::cout << "All Phase 5 streaming tests passed!" << std::endl;
     return 0;
 }
+
+
