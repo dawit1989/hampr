@@ -58,6 +58,7 @@ struct MultiSiteResult {
     double altitude = 0.0;
     double geolocation_error = 0.0;
     double fusion_time = 0.0;
+    double ms_confidence = 0.0;
     double total_time = 0.0;
 };
 

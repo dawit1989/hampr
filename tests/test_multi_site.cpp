@@ -6,6 +6,7 @@
 #include <hampr/io/multi_site_data_source.hpp>
 #include <hampr/io/text_data_source.hpp>
 #include <hampr/pipeline/multi_site_graph.hpp>
+#include <hampr/dsp/multi_static_correlator.hpp>
 #include <hampr/dsp/pipeline.hpp>
 #include <hampr/core/config.hpp>
 #include <hampr/core/types.hpp>
@@ -638,6 +639,44 @@ int main() {
         std::remove(tmpfile.c_str());
 
         std::cout << "  Test 15 PASSED: Metadata loading from JSON" << std::endl;
+    }
+
+    // Test 16: Multi-static cross-correlation
+    {
+        MultiStaticCorrelator correlator;
+
+        SynchronizedBatch batch;
+        batch.fs = 1000000.0;
+        batch.batch_samples = 1000;
+
+        ReceiverInfo info_a, info_b;
+        info_a.id = "A";
+        info_b.id = "B";
+        batch.receivers = {info_a, info_b};
+
+        IQBuffer ref_a(1000);
+        IQBuffer ref_b(1000);
+        for (int i = 0; i < 1000; ++i) {
+            ref_a[i] = complex(std::sin(2.0 * M_PI * i / 100.0), 0.0);
+            ref_b[i] = (i >= 5) ? ref_a[i - 5] : complex(0.0, 0.0);
+        }
+        batch.aligned_data.push_back(IQMatrix(1, ref_a));
+        batch.aligned_data.push_back(IQMatrix(1, ref_b));
+
+        auto results = correlator.cross_correlate(batch);
+        assert(results.size() == 1);
+        assert(results[0].site_a == 0);
+        assert(results[0].site_b == 1);
+        assert(results[0].correlation_peak > 0.0);
+
+        auto ranges = correlator.compute_bistatic_ranges(results, batch.fs);
+        assert(ranges.size() == 1);
+        assert(ranges[0] >= 0.0);
+
+        auto confidence = correlator.cooperative_confidence(results, batch.aligned_data[0]);
+        assert(confidence >= 0.0);
+
+        std::cout << "  Test 16 PASSED: Multi-static cross-correlation (peak=" << results[0].correlation_peak << ")" << std::endl;
     }
 
     std::cout << "All Phase 7 multi-site tests passed!" << std::endl;

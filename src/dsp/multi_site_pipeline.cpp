@@ -11,7 +11,8 @@ MultiSitePipeline::MultiSitePipeline(const Config& config)
     : config_(config),
       synchronizer_(std::make_unique<Synchronizer>()),
       fusion_(std::make_unique<ResultFusion>()),
-      localizer_(std::make_unique<TDoALocalizer>()) {
+      localizer_(std::make_unique<TDoALocalizer>()),
+      multi_static_(std::make_unique<MultiStaticCorrelator>()) {
 
     if (!config_.multi_site_receivers.empty()) {
         for (const auto& info : config_.multi_site_receivers) {
@@ -109,7 +110,13 @@ MultiSiteResult MultiSitePipeline::process_batch(const SynchronizedBatch& batch,
 
     TargetTrack single_track = {ref_track};
 
+    // Multi-static cross-correlation
+    auto ms_results = multi_static_->cross_correlate(batch);
+    auto bistatic_ranges = multi_static_->compute_bistatic_ranges(ms_results, batch.fs);
+    double ms_confidence = multi_static_->cooperative_confidence(ms_results, batch.aligned_data[0]);
+
     MultiSiteResult result = build_result(site_results, batch.receivers, 0.0);
+    result.ms_confidence = ms_confidence;
 
     if (config_.enable_localization && batch.aligned_data.size() >= 2) {
         auto geo = localizer_->localize(batch, single_track);

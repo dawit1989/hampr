@@ -36,6 +36,7 @@ set(HAMPR_SOURCES
     src/dsp/fusion.cpp
     src/dsp/localization.cpp
     src/dsp/multi_site_pipeline.cpp
+    src/dsp/multi_static_correlator.cpp
     src/dsp/pipeline.cpp
     src/io/text_data_source.cpp
     src/io/console_sink.cpp
