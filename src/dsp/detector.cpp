@@ -55,14 +55,15 @@ RDMap Detector::cc_detector_ons(IQBuffer& ref_ch, IQBuffer& surv_ch,
     surv_align.back().resize(surv_align.back().size() * 2, complex(0, 0));
 
     for (auto& row : ref_align)
-        fft(row);
+        fft_backend_->forward(row);
     for (auto& row : surv_align)
-        fft(row);
+        fft_backend_->forward(row);
 
-    mat corr = multiply(surv_align, conjugate(ref_align));
+    mat ref_conj = conjugate(ref_align);
+    mat corr = multiply(surv_align, ref_conj);
 
     for (auto& row : corr)
-        ifft(row);
+        fft_backend_->inverse(row);
 
     // Transpose correlation matrix
     mat corr_t(2 * r_max, IQBuffer(2 * no_sub_tasks));
@@ -73,7 +74,7 @@ RDMap Detector::cc_detector_ons(IQBuffer& ref_ch, IQBuffer& surv_ch,
             corr_t[j][i] = corr[i][j];
 
     for (auto& col : corr_t)
-        fft(col);
+        fft_backend_->forward(col);
 
     for (int i = 0; i < doppler_freq_size; ++i) {
         for (int j = 0; j < r_max; ++j) {

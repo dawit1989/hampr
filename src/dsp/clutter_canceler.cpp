@@ -51,8 +51,8 @@ IQBuffer ClutterCanceler::wiener_smi_mre(const IQBuffer& ref_ch, const IQBuffer&
             xp[i].insert(xp[i].end(), zeros.begin(), zeros.end());
 
         for (int i = 0; i < rows; ++i) {
-            fft(xp[i]);
-            fft(yp[i]);
+            fft_backend_->forward(xp[i]);
+            fft_backend_->forward(yp[i]);
         }
 
         auto bpw_conj = conjugate(yp);
@@ -62,7 +62,7 @@ IQBuffer ClutterCanceler::wiener_smi_mre(const IQBuffer& ref_ch, const IQBuffer&
                 mult_result[i][j] = xp[i][j] * bpw_conj[i][j];
 
         for (int i = 0; i < rows; ++i)
-            ifft(mult_result[i]);
+            fft_backend_->inverse(mult_result[i]);
 
         mat fft_shifted = conjugate(fftshift(mult_result));
 
@@ -89,11 +89,11 @@ IQBuffer ClutterCanceler::wiener_smi_mre(const IQBuffer& ref_ch, const IQBuffer&
             R[i][k] = shifted[i];
     }
 
-    R = add(R, transposeConj(R));
+    mat R_tc = linalg_backend_->transpose_conj(R); R = add(R, R_tc);
     for (int i = 0; i < K; ++i)
         R[i][i] *= 0.5;
 
-    IQBuffer w = dot(inverse(R), r);
+    IQBuffer w = dot(linalg_backend_->inverse(R), r);
 
     IQBuffer output = surv_ch;
     IQBuffer convolved = convolve(ref_ch, w);
