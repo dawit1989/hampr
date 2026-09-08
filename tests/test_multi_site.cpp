@@ -342,12 +342,12 @@ int main() {
             double sinr_err = std::abs(site_res.sinr - ref_result.sinr);
             double az_err = std::abs(site_res.azimuth_estimated - ref_result.azimuth_estimated);
 
-            assert(range_err < 1e-6);
-            assert(doppler_err < 1e-6);
-            assert(sinr_err < 1e-6);
-            assert(az_err < 1e-6);
+            assert(range_err < 1e-12);
+            assert(doppler_err < 1e-12);
+            assert(sinr_err < 1e-12);
+            assert(az_err < 1e-12);
 
-            std::cout << "  Test 9 PASSED: Single-site mode matches Pipeline (err < 1e-6)" << std::endl;
+            std::cout << "  Test 9 PASSED: Single-site mode matches Pipeline (err < 1e-12)" << std::endl;
         }
     }
 
@@ -452,49 +452,89 @@ int main() {
         assert(fused.contributing_bearings.size() == 2);
         assert(fused.confidence > 0.0);
 
+        // Verify intersection accuracy (within 100m)
+        // Sites at (0,0) and (0, 0.0001 lon) ~11.1m apart east
+        // Bearings 45deg (NE) from A, 135deg (NW) from B
+        // Intersection: (5.56m, 5.56m) ENU from site A
+        double expected_lat = 5.56 / 6371000.0 * 57.29577951308232;
+        double expected_lon = 5.56 / 6371000.0 * 57.29577951308232;
+        double dlat = (fused.latitude - expected_lat) * 0.017453292519943295;
+        double dlon = (fused.longitude - expected_lon) * 0.017453292519943295;
+        double lat_err_m = dlat * 6371000.0;
+        double lon_err_m = dlon * 6371000.0;
+        double total_err_m = std::sqrt(lat_err_m * lat_err_m + lon_err_m * lon_err_m);
+        assert(total_err_m < 100.0);
+
         double combined = fusion.combined_sinr(results);
         assert(combined > 0.0);
 
         std::cout << "  Test 11 PASSED: Bearing intersection (combined SINR=" << combined << ")" << std::endl;
     }
 
-    // Test 12: TDoA localization with synthetic data
+    // Test 12: TDoA localization with synthetic data and known target position
     {
         TDoALocalizer localizer;
+        Synchronizer sync;
+        const double C = 299792458.0;
+        const double EARTH_R = 6371000.0;
+        const double DEG_TO_RAD = 0.017453292519943295;
+        const double RAD_TO_DEG = 57.29577951308232;
 
-        // Create two synchronized batches with a known time delay
         SynchronizedBatch batch;
-        batch.fs = 1000000.0;  // 1 MHz
-        batch.batch_samples = 1000;
+        batch.fs = 10000000.0;  // 10 MHz for good TDoA resolution
+        batch.batch_samples = 2000;
 
-        ReceiverInfo info_a, info_b;
-        info_a.id = "A";
-        info_a.latitude = -37.8472;
-        info_a.longitude = 145.0451;
-        info_b.id = "B";
-        info_b.latitude = -37.8430;
-        info_b.longitude = 145.0480;
-        batch.receivers = {info_a, info_b};
+        // 4 sites in a 500m x 500m square at equator
+        ReceiverInfo info[4];
+        info[0].id = "A"; info[0].latitude = 0.0; info[0].longitude = 0.0;
+        info[1].id = "B"; info[1].latitude = 0.0; info[1].longitude = 500.0 / EARTH_R * RAD_TO_DEG;
+        info[2].id = "C"; info[2].latitude = 500.0 / EARTH_R * RAD_TO_DEG; info[2].longitude = 0.0;
+        info[3].id = "D"; info[3].latitude = 500.0 / EARTH_R * RAD_TO_DEG; info[3].longitude = 500.0 / EARTH_R * RAD_TO_DEG;
+        batch.receivers = {info[0], info[1], info[2], info[3]};
 
-        // Create reference signals: site B has a 10-sample delay
-        IQBuffer ref_a(1000);
-        IQBuffer ref_b(1000);
-        for (int i = 0; i < 1000; ++i) {
-            ref_a[i] = complex(std::sin(2.0 * M_PI * i / 100.0), 0.0);
-            ref_b[i] = (i >= 10) ? ref_a[i - 10] : complex(0.0, 0.0);
-        }
+        // Target at 200m east, 150m north of site A
+        double target_e = 200.0;
+        double target_n = 150.0;
+        double target_lat = target_n / EARTH_R * RAD_TO_DEG;
+        double target_lon = target_e / EARTH_R * RAD_TO_DEG;
+
+        // Site positions in ENU (meters)
+        double site_e[4] = {0, 500, 0, 500};
+        double site_n[4] = {0, 0, 500, 500};
+
+        // Generate reference signal (site A)
+        IQBuffer ref_a(2000);
+        for (int i = 0; i < 2000; ++i)
+            ref_a[i] = complex(std::sin(2.0 * M_PI * i / 137.0), 0.0);
         batch.aligned_data.push_back(IQMatrix(1, ref_a));
-        batch.aligned_data.push_back(IQMatrix(1, ref_b));
+
+        // Generate delayed signals for sites B, C, D
+        for (int s = 1; s < 4; ++s) {
+            double dist_t = std::sqrt(std::pow(target_e - site_e[s], 2) + std::pow(target_n - site_n[s], 2));
+            double dist_ref = std::sqrt(std::pow(target_e - site_e[0], 2) + std::pow(target_n - site_n[0], 2));
+            double tdoa_samples = (dist_t - dist_ref) / C * batch.fs;
+            IQBuffer ref = sync.interpolate_shift(ref_a, tdoa_samples);
+            batch.aligned_data.push_back(IQMatrix(1, ref));
+        }
 
         TargetTrackPoint ref_track;
-        ref_track.range = 5000.0;
+        ref_track.range = std::sqrt(target_e * target_e + target_n * target_n);
         TargetTrack track = {ref_track};
 
         auto geo = localizer.localize(batch, track);
-        assert(geo.latitude != 0.0 || geo.longitude != 0.0);
+
+        // Check geolocation error (within 50% of baseline)
+        double dlat = (geo.latitude - target_lat) * DEG_TO_RAD;
+        double dlon = (geo.longitude - target_lon) * DEG_TO_RAD;
+        double lat_err_m = dlat * EARTH_R;
+        double lon_err_m = dlon * EARTH_R * std::cos(target_lat * DEG_TO_RAD);
+        double total_err_m = std::sqrt(lat_err_m * lat_err_m + lon_err_m * lon_err_m);
+
+        double baseline = std::sqrt(std::pow(site_e[3] - site_e[0], 2) + std::pow(site_n[3] - site_n[0], 2));
+        assert(total_err_m < baseline * 0.5);
         assert(geo.residual_error >= 0.0);
 
-        std::cout << "  Test 12 PASSED: TDoA localization (residual=" << geo.residual_error << "m)" << std::endl;
+        std::cout << "  Test 12 PASSED: TDoA localization (error=" << total_err_m << "m, baseline=" << baseline << "m)" << std::endl;
     }
 
     // Test 13: MultiSiteGraph async metrics interface
@@ -679,7 +719,36 @@ int main() {
         std::cout << "  Test 16 PASSED: Multi-static cross-correlation (peak=" << results[0].correlation_peak << ")" << std::endl;
     }
 
-    std::cout << "All Phase 7 multi-site tests passed!" << std::endl;
+    
+    // Test 17: ArrayGeometry FlatBuffer scanning vectors match mat variant
+    {
+        ArrayGeometrySpec spec;
+        spec.type = ArrayGeometrySpec::Type::URA;
+        spec.element_spacing = 0.5;
+        spec.ura_rows = 2;
+        spec.ura_cols = 3;
+        ArrayGeometry geom(spec);
+
+        std::vector<double> thetas = {0, 30, 45, 90, 180};
+        std::vector<double> phis = {10, 20, 30, 40, 50};
+        mat sv_mat = geom.gen_scanning_vectors(thetas, phis);
+        FlatBuffer sv_fb = geom.gen_scanning_vectors_fb(thetas, phis);
+
+        assert(sv_fb.rows() == geom.num_elements());
+        assert(sv_fb.cols() == static_cast<int>(thetas.size()));
+
+        double max_err = 0.0;
+        for (int j = 0; j < geom.num_elements(); ++j)
+            for (size_t i = 0; i < thetas.size(); ++i) {
+                double err = std::abs(sv_mat[j][i] - sv_fb(j, i));
+                if (err > max_err) max_err = err;
+            }
+        assert(max_err < 1e-12);
+
+        std::cout << "  Test 17 PASSED: FlatBuffer scanning vectors match mat (err=" << max_err << ")" << std::endl;
+    }
+
+std::cout << "All Phase 7 multi-site tests passed!" << std::endl;
     return 0;
 }
 

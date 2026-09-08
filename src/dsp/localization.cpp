@@ -68,14 +68,28 @@ double TDoALocalizer::estimate_tdoa(const IQBuffer& ref_a, const IQBuffer& ref_b
         }
     }
 
-    // Convert to signed lag
-    int lag;
-    if (peak_idx > N / 2)
-        lag = peak_idx - N;
-    else
-        lag = peak_idx;
+    // Parabolic interpolation for sub-sample precision
+    double interpolated_peak = static_cast<double>(peak_idx);
+    if (peak_idx > 0 && peak_idx < N - 1) {
+        double y_m1 = std::abs(a[peak_idx - 1]);
+        double y_0 = max_val;
+        double y_p1 = std::abs(a[peak_idx + 1]);
+        double denom = y_m1 - 2.0 * y_0 + y_p1;
+        if (std::abs(denom) > 1e-15) {
+            double delta = 0.5 * (y_m1 - y_p1) / denom;
+            delta = std::max(-1.0, std::min(1.0, delta));
+            interpolated_peak = static_cast<double>(peak_idx) + delta;
+        }
+    }
 
-    return static_cast<double>(lag);
+    // Convert to signed lag
+    double lag;
+    if (interpolated_peak > N / 2.0)
+        lag = interpolated_peak - N;
+    else
+        lag = interpolated_peak;
+
+    return lag;
 }
 
 std::pair<double, double> TDoALocalizer::tdoa_to_position(
@@ -216,19 +230,25 @@ TDoALocalizer::GeoResult TDoALocalizer::localize(const SynchronizedBatch& batch,
     result.longitude = lon;
     result.altitude = 0.0;
 
-    // Residual error: distance from solution to each site vs expected
+    // Residual error: compare distance differences (solution vs sites)
+    // with expected TDoA-derived distance differences
     double residual = 0.0;
+    // Distance from solution to reference site (site 0)
+    double dlat0 = (lat - site_positions[0].first) * DEG_TO_RAD;
+    double dlon0 = (lon - site_positions[0].second) * DEG_TO_RAD;
+    double d0_lat_m = dlat0 * EARTH_RADIUS_M;
+    double d0_lon_m = dlon0 * EARTH_RADIUS_M * std::cos(lat * DEG_TO_RAD);
+    double d0 = std::sqrt(d0_lat_m * d0_lat_m + d0_lon_m * d0_lon_m);
     for (size_t i = 0; i < site_positions.size(); ++i) {
         double d_expected = SPEED_OF_LIGHT * tdoa_samples[i] / fs;
-        double d_actual = 0.0;
-        // Approximate with ENU distance
-        // Simple Euclidean in lat/lon space
+        // ENU distance from solution to site i
         double dlat = (lat - site_positions[i].first) * DEG_TO_RAD;
         double dlon = (lon - site_positions[i].second) * DEG_TO_RAD;
         double d_lat_m = dlat * EARTH_RADIUS_M;
         double d_lon_m = dlon * EARTH_RADIUS_M * std::cos(lat * DEG_TO_RAD);
-        d_actual = std::sqrt(d_lat_m * d_lat_m + d_lon_m * d_lon_m);
-        residual += std::abs(d_actual - std::abs(d_expected));
+        double d_i = std::sqrt(d_lat_m * d_lat_m + d_lon_m * d_lon_m);
+        // Compare distance difference with TDoA
+        residual += std::abs((d_i - d0) - d_expected);
     }
     result.residual_error = residual / site_positions.size();
 

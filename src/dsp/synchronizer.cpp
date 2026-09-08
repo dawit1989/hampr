@@ -55,8 +55,6 @@ SynchronizedBatch Synchronizer::synchronize(const MultiSiteData& data) {
     if (data.iq_data.empty())
         return SynchronizedBatch{};
 
-    calibrate(const_cast<MultiSiteData&>(data));
-
     SynchronizedBatch batch;
     batch.receivers = data.receivers;
     batch.fs = data.fs;
@@ -72,10 +70,19 @@ SynchronizedBatch Synchronizer::synchronize(const MultiSiteData& data) {
         const ReceiverInfo& info = data.receivers[s];
         double sample_offset = info.clock_offset * data.fs;
 
+        // Apply gain/phase calibration inline (avoids const_cast on input)
+        double amplitude = std::pow(10.0, info.gain / 20.0);
+        complex phase_factor = complex(std::cos(info.phase_offset), std::sin(info.phase_offset));
+        complex cal_factor = amplitude * phase_factor;
+
         batch.aligned_data[s].resize(data.iq_data[s].size());
         for (size_t ch = 0; ch < data.iq_data[s].size(); ++ch) {
             const IQBuffer& channel = data.iq_data[s][ch];
             IQBuffer shifted = interpolate_shift(channel, sample_offset);
+
+            // Apply calibration (linear op: order with interpolation is irrelevant)
+            for (auto& sample : shifted)
+                sample *= cal_factor;
 
             if (static_cast<int>(shifted.size()) > min_samples)
                 shifted.resize(min_samples);
