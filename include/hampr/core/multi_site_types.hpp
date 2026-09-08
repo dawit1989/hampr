@@ -62,6 +62,21 @@ struct MultiSiteResult {
     double total_time = 0.0;
 };
 
+struct FusionQuality {
+    double gdop = 0.0;
+    double hdop = 0.0;
+    double vdop = 0.0;
+    double fdoa_confidence = 0.0;
+    int iterations = 0;
+};
+
+struct FDoAMeasurement {
+    int site_a = 0;
+    int site_b = 0;
+    double frequency_offset = 0.0;
+    double confidence = 0.0;
+};
+
 } // namespace hampr
 
 #endif // HAMPR_CORE_MULTI_SITE_TYPES_HPP

@@ -14,6 +14,7 @@ public:
         int site_a;
         int site_b;
         double time_delay_samples;
+    double fdoa_hz;
         double correlation_peak;
         IQBuffer cross_spectrum;
     };
@@ -28,6 +29,8 @@ public:
     double cooperative_confidence(
         const std::vector<CrossCorrelationResult>& results,
         const std::vector<IQBuffer>& site_surveillance);
+
+    double estimate_fdoa(const IQBuffer& ref_a, const IQBuffer& ref_b, double fs);
 
 private:
     CrossCorrelationResult cross_correlate_pair(

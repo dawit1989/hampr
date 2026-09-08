@@ -12,6 +12,7 @@ MultiSitePipeline::MultiSitePipeline(const Config& config)
       synchronizer_(std::make_unique<Synchronizer>()),
       fusion_(std::make_unique<ResultFusion>()),
       localizer_(std::make_unique<TDoALocalizer>()),
+      fusion_engine_(std::make_unique<MultiStaticFusion>()),
       multi_static_(std::make_unique<MultiStaticCorrelator>()) {
 
     if (!config_.multi_site_receivers.empty()) {

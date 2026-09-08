@@ -6,6 +6,7 @@
 #include <hampr/dsp/fusion.hpp>
 #include <hampr/dsp/localization.hpp>
 #include <hampr/dsp/multi_static_correlator.hpp>
+#include <hampr/dsp/multi_static_fusion.hpp>
 #include <hampr/core/config.hpp>
 #include <hampr/core/multi_site_types.hpp>
 #include <memory>
@@ -30,6 +31,7 @@ private:
     std::unique_ptr<Synchronizer> synchronizer_;
     std::unique_ptr<ResultFusion> fusion_;
     std::unique_ptr<TDoALocalizer> localizer_;
+    std::unique_ptr<MultiStaticFusion> fusion_engine_;
     std::unique_ptr<MultiStaticCorrelator> multi_static_;
     std::vector<std::unique_ptr<Pipeline>> site_pipelines_;
     std::vector<double> site_times_;

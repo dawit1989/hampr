@@ -37,6 +37,7 @@ set(HAMPR_SOURCES
     src/dsp/localization.cpp
     src/dsp/multi_site_pipeline.cpp
     src/dsp/multi_static_correlator.cpp
+    src/dsp/multi_static_fusion.cpp
     src/dsp/pipeline.cpp
     src/io/text_data_source.cpp
     src/io/console_sink.cpp
@@ -111,6 +112,9 @@ if(HAMPR_BUILD_TESTS)
     add_executable(test_multi_site tests/test_multi_site.cpp)
     target_link_libraries(test_multi_site PRIVATE hampr)
     add_test(NAME test_multi_site COMMAND test_multi_site)
+    add_executable(test_phase8 tests/test_phase8.cpp)
+    target_link_libraries(test_phase8 PRIVATE hampr)
+    add_test(NAME test_phase8 COMMAND test_phase8)
 endif()
 
 install(TARGETS hampr
