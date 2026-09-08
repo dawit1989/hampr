@@ -544,7 +544,7 @@ int main() {
             MultiSiteGraph graph(config);
 
             MultiSiteDataSource source;
-            assert(source.open_site("site_A", data_dir + "/dataset_494.txt"));
+            bool _opened = source.open_site("site_A", data_dir + "/dataset_494.txt"); assert(_opened);
             assert(source.has_more_site("site_A"));
             assert(source.num_channels_site("site_A") == 4);
             assert(source.sampling_rate_site("site_A") > 0);

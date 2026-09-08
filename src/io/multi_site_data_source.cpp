@@ -1,5 +1,7 @@
 #include <hampr/io/multi_site_data_source.hpp>
 #include <hampr/io/text_data_source.hpp>
+#include <iostream>
+#include <hampr/io/text_data_source.hpp>
 #include <hampr/utils/json.hpp>
 #include <hampr/core/exception.hpp>
 #include <fstream>
@@ -140,6 +142,22 @@ bool MultiSiteDataSource::open_site(const std::string& site_id, const std::strin
         }
         if (master_fs_ == 0.0)
             master_fs_ = source->sampling_rate();
+
+        // Create default ReceiverInfo if not already loaded from metadata
+        bool found = false;
+        for (const auto& r : receiver_infos_)
+            if (r.id == site_id) { found = true; break; }
+        if (!found) {
+            ReceiverInfo info;
+            info.id = site_id;
+            info.num_channels = source->num_channels();
+            info.ref_channel_index = 0;
+            info.array_geometry.type = ArrayGeometrySpec::Type::ULA;
+            info.array_geometry.ula_elements = source->num_channels();
+            info.array_geometry.element_spacing = 0.5;
+            receiver_infos_.push_back(info);
+        }
+
         site_sources_[site_id] = std::move(source);
         return true;
     } catch (const std::exception&) {
@@ -197,4 +215,5 @@ TargetTrack MultiSiteDataSource::load_track(const std::string& filename) {
 }
 
 } // namespace hampr
+
 
