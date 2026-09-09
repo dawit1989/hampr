@@ -3,6 +3,8 @@
 
 #include <hampr/io/data_source.hpp>
 #include <hampr/io/streaming_source.hpp>
+#include <hampr/io/radio_source.hpp>
+#include <hampr/io/live_data_source.hpp>
 #include <hampr/core/multi_site_types.hpp>
 #include <string>
 #include <map>
@@ -21,6 +23,7 @@ public:
     MultiSiteData get_multi_site_data();
 
     bool open_site(const std::string& site_id, const std::string& filename);
+    bool open_live_site(const std::string& site_id, std::unique_ptr<RadioSource> source);
     IQMatrix next_batch_site(const std::string& site_id, size_t batch_size);
     bool has_more_site(const std::string& site_id) const;
     double sampling_rate_site(const std::string& site_id) const;
@@ -38,6 +41,7 @@ public:
 private:
     std::map<std::string, IQMatrix> site_iq_data_;
     std::map<std::string, std::unique_ptr<StreamingDataSource>> site_sources_;
+    std::map<std::string, std::unique_ptr<LiveDataSource>> live_sources_;
     std::vector<ReceiverInfo> receiver_infos_;
     double master_fs_ = 0.0;
 

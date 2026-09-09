@@ -44,6 +44,8 @@ set(HAMPR_SOURCES
     src/io/file_sink.cpp
     src/io/multi_site_data_source.cpp
     src/io/streaming_source.cpp
+    src/io/radio_source.cpp
+    src/io/live_data_source.cpp
     src/pipeline/graph.cpp
     src/pipeline/multi_site_graph.cpp
     src/accel/fftw_backend.cpp
@@ -115,6 +117,9 @@ if(HAMPR_BUILD_TESTS)
     add_executable(test_phase8 tests/test_phase8.cpp)
     target_link_libraries(test_phase8 PRIVATE hampr)
     add_test(NAME test_phase8 COMMAND test_phase8)
+    add_executable(test_phase6 tests/test_phase6.cpp)
+    target_link_libraries(test_phase6 PRIVATE hampr)
+    add_test(NAME test_phase6 COMMAND test_phase6)
 endif()
 
 install(TARGETS hampr

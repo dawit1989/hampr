@@ -1,5 +1,6 @@
 #include <hampr/io/multi_site_data_source.hpp>
 #include <hampr/io/text_data_source.hpp>
+#include <hampr/io/live_data_source.hpp>
 #include <iostream>
 #include <hampr/io/text_data_source.hpp>
 #include <hampr/utils/json.hpp>
@@ -133,6 +134,37 @@ MultiSiteData MultiSiteDataSource::get_multi_site_data() {
     return data;
 }
 
+bool MultiSiteDataSource::open_live_site(const std::string& site_id, std::unique_ptr<RadioSource> source) {
+    try {
+        if (!source->is_open()) {
+            return false;
+        }
+        if (master_fs_ == 0.0)
+            master_fs_ = source->sampling_rate();
+
+        bool found = false;
+        for (const auto& r : receiver_infos_)
+            if (r.id == site_id) { found = true; break; }
+        if (!found) {
+            ReceiverInfo info;
+            info.id = site_id;
+            info.num_channels = source->num_channels();
+            info.ref_channel_index = 0;
+            info.array_geometry.type = ArrayGeometrySpec::Type::ULA;
+            info.array_geometry.ula_elements = source->num_channels();
+            info.array_geometry.element_spacing = 0.5;
+            receiver_infos_.push_back(info);
+        }
+
+        auto live = std::make_unique<LiveDataSource>(std::move(source));
+        // Store as streaming source for multi-site use
+        live_sources_[site_id] = std::move(live);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
 bool MultiSiteDataSource::open_site(const std::string& site_id, const std::string& filename) {
     try {
         std::string path = find_file(filename);
@@ -167,34 +199,48 @@ bool MultiSiteDataSource::open_site(const std::string& site_id, const std::strin
 
 IQMatrix MultiSiteDataSource::next_batch_site(const std::string& site_id, size_t batch_size) {
     auto it = site_sources_.find(site_id);
-    if (it == site_sources_.end())
-        throw HamprException("MultiSiteDataSource: unknown site: " + site_id);
-    return it->second->next_batch(batch_size);
+    if (it != site_sources_.end())
+        return it->second->next_batch(batch_size);
+    auto lit = live_sources_.find(site_id);
+    if (lit != live_sources_.end())
+        return lit->second->next_batch(batch_size);
+    throw HamprException("MultiSiteDataSource: unknown site: " + site_id);
 }
 
 bool MultiSiteDataSource::has_more_site(const std::string& site_id) const {
     auto it = site_sources_.find(site_id);
-    if (it == site_sources_.end())
-        return false;
-    return it->second->has_more();
+    if (it != site_sources_.end())
+        return it->second->has_more();
+    auto lit = live_sources_.find(site_id);
+    if (lit != live_sources_.end())
+        return lit->second->has_more();
+    return false;
 }
 
 double MultiSiteDataSource::sampling_rate_site(const std::string& site_id) const {
     auto it = site_sources_.find(site_id);
-    if (it == site_sources_.end())
-        return 0.0;
-    return it->second->sampling_rate();
+    if (it != site_sources_.end())
+        return it->second->sampling_rate();
+    auto lit = live_sources_.find(site_id);
+    if (lit != live_sources_.end())
+        return lit->second->sampling_rate();
+    return 0.0;
 }
 
 int MultiSiteDataSource::num_channels_site(const std::string& site_id) const {
     auto it = site_sources_.find(site_id);
-    if (it == site_sources_.end())
-        return 0;
-    return it->second->num_channels();
+    if (it != site_sources_.end())
+        return it->second->num_channels();
+    auto lit = live_sources_.find(site_id);
+    if (lit != live_sources_.end())
+        return lit->second->num_channels();
+    return 0;
 }
 
 void MultiSiteDataSource::reset_all() {
     for (auto& [id, source] : site_sources_)
+        source->reset();
+    for (auto& [id, source] : live_sources_)
         source->reset();
 }
 
@@ -202,6 +248,9 @@ void MultiSiteDataSource::close_all() {
     for (auto& [id, source] : site_sources_)
         source->close();
     site_sources_.clear();
+    for (auto& [id, source] : live_sources_)
+        source->close();
+    live_sources_.clear();
 }
 
 IQMatrix MultiSiteDataSource::load(const std::string& filename, double& fs) {

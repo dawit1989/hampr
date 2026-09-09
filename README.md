@@ -13,6 +13,16 @@ HAMPR processes passive radar IQ data through a six-stage pipeline:
 5. **Target Finding** — Peak search in Range-Doppler map
 6. **DOA Estimation** — MUSIC with eigen decomposition
 
+### Phase 6: SDR Integration
+
+HAMPR supports live SDR input through the `RadioSource` abstraction:
+
+- **RadioSource** — Abstract interface for SDR hardware backends
+- **FileRadioSource** — File-based mock for testing
+- **LiveDataSource** — DataSource implementation using RadioSource
+
+No SDR coupling in the DSP layer — SDR sources provide IQ data through the existing streaming abstraction.
+
 ### Phase 7: Multi-Antenna / Multi-Receiver Scaling
 
 HAMPR supports multi-site, multi-antenna passive radar networks:
@@ -84,7 +94,9 @@ cd build && ctest
 hampr/
   CMakeLists.txt              # Build system
   PLAN.md                     # Engineering plan (all phases)
+  PLAN_PHASE6.md              # Phase 6 detailed implementation plan
   PLAN_PHASE7.md              # Phase 7 detailed implementation plan
+  PLAN_PHASE8.md              # Phase 8 detailed implementation plan
   include/hampr/
     core/
       types.hpp               # Type aliases (complex, array, mat, etc.)
@@ -105,6 +117,8 @@ hampr/
       multi_site_pipeline.hpp # Multi-site pipeline orchestrator
     io/                       # DataSource/DataSink abstractions
       multi_site_data_source.hpp # Multi-site data loading
+      radio_source.hpp        # SDR hardware abstraction
+      live_data_source.hpp    # Live SDR DataSource
     utils/                    # Math, FFTW, LinAlg, JSON utilities
     pipeline/                 # Pipeline schedulers
       multi_site_graph.hpp    # Multi-site streaming scheduler
@@ -167,6 +181,8 @@ MultiSiteDataSource -> Synchronizer -> MultiSitePipeline -> MultiSiteGraph
 | `test_accel` | Backend consistency and flat buffer tests |
 | `test_streaming` | Phase 5 streaming (BufferPool, StreamingDataSource) |
 | `test_multi_site` | Phase 7 multi-site (ArrayGeometry, Synchronizer, Fusion, TDoA) |
+| `test_phase8` | Phase 8 multi-static (FDoA, GDOP, hybrid) |
+| `test_phase6` | Phase 6 SDR integration (RadioSource, LiveDataSource) |
 
 ## License
 
