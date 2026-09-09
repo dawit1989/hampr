@@ -49,3 +49,8 @@ tmp_*
 
 # Ref directory (reference implementations, not part of this repo)
 Ref/
+
+# Validation tool binaries (built by validation/Makefile)
+validation/bench_dump
+validation/compare_dumps
+validation/readres

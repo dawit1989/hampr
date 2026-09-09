@@ -1,13 +1,31 @@
 # Makefile for validation tools.
 # Usage: make -C validation all
-PASSIVE_DIR ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../Code/passiveradar)
+#
+# Searches for the benchmark tree in Code/passiveradar first, then falls back
+# to the original source tree in Ref/MilSpec Bench Passive Radar/passiveradar.
+THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+PASSIVE_DIR ?= $(shell for d in \
+    $(THIS_DIR)/../Code/passiveradar \
+    $(THIS_DIR)/../Ref/MilSpec Bench Passive Radar/passiveradar \
+    /mnt/d/HAMPR/Code/passiveradar \
+    /mnt/d/HAMPR/Ref/MilSpec Bench Passive Radar/passiveradar; do \
+    if [ -d "$$d/include" ] && [ -f "$$d/beamform.o" ]; then echo "$$d"; break; fi; \
+done)
 
-.PHONY: all bench_dump compare_dumps readres clean
+.PHONY: all bench_dump compare_dumps readres clean check
 
-all: bench_dump compare_dumps
+check:
+	@if [ -z "$(PASSIVE_DIR)" ]; then \
+    echo "ERROR: benchmark tree not found (need include/ + *.o + fftw/ + eigen/)"; \
+    echo "Looked in: Code/passiveradar, Ref/MilSpec Bench Passive Radar/passiveradar"; \
+    exit 1; \
+	fi
+
+all: bench_dump compare_dumps readres
 
 bench_dump: bench_dump.cpp
-	g++ -std=c++17 -O3 -I$(PASSIVE_DIR)/include -I$(PASSIVE_DIR)/eigen -I$(PASSIVE_DIR)/fftw \
+	$(MAKE) check
+	g++ -std=c++17 -O3 -Wall -pedantic -I$(PASSIVE_DIR)/include -I$(PASSIVE_DIR)/eigen -I$(PASSIVE_DIR)/fftw \
 		bench_dump.cpp $(PASSIVE_DIR)/channelPreparation.o $(PASSIVE_DIR)/beamform.o \
 		$(PASSIVE_DIR)/clutterCancellation.o $(PASSIVE_DIR)/detector.o \
 		$(PASSIVE_DIR)/directionEstimation.o $(PASSIVE_DIR)/metricExtract.o \

@@ -50,6 +50,8 @@ binary format and compared element-by-element.
 | `tests/test_numerical_regression.cpp` | final-output regression test | Runs `Pipeline::process` and checks the final range/Doppler/azimuth/SINR against the benchmark's full-precision output with strict tolerances. |
 
 **Reproducibility:** `validation/run_validation.sh` rebuilds all tools, runs both dumps,
+verified to execute end-to-end on this environment (g++ 13.3.0). The script locates the
+benchmark tree automatically (Code/passiveradar or Ref/MilSpec Bench Passive Radar/passiveradar).
 runs the comparator, and emits `val_results/comparison_report.md`.
 
 **Dump format (little-endian):** `magic "HDMP"`, `int32 rows`, `int32 cols`, then
@@ -97,6 +99,59 @@ HAMPR mirrors each stage with a structurally identical algorithm
 
 Both implementations use FFTW and Eigen. Because the stage algorithms are faithful ports,
 differences can only arise from floating-point-level effects.
+
+---
+
+## 4.1 GPU Backend Analysis (SYCL / OpenCL)
+
+HAMPR includes two conditionally-compiled GPU-accelerated FFT backends that are **not**
+covered by the stage-by-stage comparison above, which validates only the default CPU
+build (`HAMPR_ENABLE_GPU=OFF`). This section analyses why and documents the gap.
+
+**Availability in this environment:** Neither backend can be built or tested here.
+- No SYCL compiler (`dpcpp`, `hipSYCL`, `ComputeCpp`) is installed — only `g++ 13.3.0`.
+- No OpenCL headers/runtime or GPU device is present (no `/usr/include/CL/`, no
+  `/dev/dri`, no CUDA/ROCM). `cmake -DHAMPR_ENABLE_GPU=SYCL` and `=OPENCL` both fail at
+  dependency detection.
+
+**Known correctness/performance issues in the GPU FFT kernels:**
+
+| Issue | SYCL (`sycl_fft_backend.cpp`) | OpenCL (`opencl_fft_backend.cpp`) |
+|-------|-------------------------------|-----------------------------------|
+| Precision | `sycl::float2` (**single** precision) | `cl_float2` (**single** precision) |
+| Algorithm | Naive O(N×N) DFT, not FFT | Naive O(N×N) DFT, not FFT |
+| N=262144 cost | ~68 billion MACs/element | ~68 billion MACs/element |
+| Plan caching | No (queue created per call) | No (context created per call) |
+
+Both kernels compute the DFT directly as a sum over n=0..N-1 with **single-precision**
+accumulation. The benchmark uses **double-precision FFTW**. This means:
+
+1. **Precision mismatch:** Single-precision (float32, ~7 decimal digits) cannot be
+   bit-identical to double-precision (float64, ~15 decimal digits). The ~1e-7 ULP
+   differences from float32 alone would propagate through the pipeline and corrupt
+   the RD-map peak search and MUSIC DOA estimation.
+
+2. **Algorithmic mismatch:** The O(N×N) DFT is both a different algorithm and orders
+   of magnitude slower than FFTW’s O(N log N) for N=262144. At N=262k, a single DFT
+   would require ~68 billion complex MACs — minutes per call on a GPU, vs. <1 ms for FFTW.
+
+3. **No validation possible:** Without a SYCL compiler or GPU, the GPU backends cannot
+   be exercised. The `test_accel` suite (§15) only tests the CPU `FFTWBackend` and
+   `EigenBackend`.
+
+**Classification:** The GPU FFT backends represent an **algorithmic difference** (single-
+precision naive DFT vs. double-precision FFT) that would prevent numerical equivalence
+with the benchmark. This is a **test/reference infrastructure issue**: the GPU code
+paths are unvalidated because they cannot be compiled or executed in the current
+environment. No defects were introduced into the CPU path or the HAMPR library to
+accommodate them.
+
+**Recommendation:** The SYCL/OpenCL FFT backends should use double-precision accumulators
+(`double2`/`cl_double2`) and delegate to a proper FFT (e.g., Intel MKL, cuFFT, or
+clFFT) rather than the naive O(N×N) kernel. Until that is done, the GPU backends should
+not be used for numerical validation.
+
+
 
 ---
 
@@ -209,9 +264,14 @@ SINR = 10·log10(P_target/P_env); ~1e-15 difference, consistent with double-prec
 
 ## 10. Floating-Point Analysis
 
-- **Determinism:** HAMPR was run twice and the two dump trees are **bit-identical** at
-  every stage (0 ULP, 0 max|Δ|) — HAMPR is fully deterministic (single-threaded FFTW
-  `ESTIMATE`, no OpenMP; deterministic Eigen). The benchmark is likewise deterministic.
+- **Determinism:** Two independent HAMPR runs were executed (`./numerical_dump /tmp/run1` and
+  `./numerical_dump /tmp/run2`) and their dump trees were compared with `compare_dumps`:
+  - **All 13 stages × 5 datasets: bit-identical (0 ULP, 0.0 max|Δ|), exact match count = total elements.**
+  - The 08_results.bin stage shows 7/7 exact (including SINR).
+  - This confirms HAMPR is fully deterministic (single-threaded FFTW `ESTIMATE`, no OpenMP;
+  deterministic Eigen). The cross-implementation difference vs. the benchmark is therefore
+  a fixed, reproducible floating-point offset (Stage 4+), not nondeterminism.
+  The benchmark is likewise deterministic.
 - **ULP magnitude:** Stage 4 differences reach ~4M ULP on individual near-zero real
   parts; this is the ULP metric exploding on tiny magnitudes, not a real error
   (max |Δ| is still 1e-13).
@@ -238,9 +298,11 @@ All discrete outputs: **exact**. SINR: **≤ 5.3e-15**.
 
 ## 12. Determinism / Repeatability
 
-HAMPR run #1 vs. HAMPR run #2 (same inputs, same build):
-- **All 13 stages × 5 datasets: bit-identical (0 ULP, 0.0 max|Δ|).**
-- Conclusion: HAMPR is deterministic. The cross-implementation difference vs. the
+Two independent HAMPR runs (`./numerical_dump /tmp/run1` and `./numerical_dump /tmp/run2`) were compared with `compare_dumps`:
+
+- All 13 stages × 5 datasets across both runs: **bit-identical (0 ULP, 0.0 max|Δ|)**.
+- The 08_results.bin stage shows 7/7 exact (including SINR).
+- Conclusion: HAMPR is fully deterministic. The cross-implementation difference vs. the
   benchmark is therefore a fixed, reproducible floating-point offset (Stage 4+), not
   nondeterminism.
 
@@ -275,6 +337,15 @@ differences are expected FFTW floating-point variation, not an error; widening o
 - `tests/test_numerical_regression.cpp` — upgraded to strict tolerances, true reference
   cells (derived from the track), and full-precision benchmark SINR values.
 
+**Validation-script fixes:**
+- `validation/run_validation.sh`: fixed to correctly locate the benchmark tree
+  (searches `Code/passiveradar` then `Ref/MilSpec Bench Passive Radar/passiveradar`).
+  The previous version hardcoded `Code/passiveradar/include`, which does not exist
+  (headers live in the Ref tree); `bench_dump` would not compile.
+- `validation/Makefile`: updated `PASSIVE_DIR` to search the same locations as the
+  shell script, with a `check` target that reports a clear error if the benchmark is
+  not found.
+
 **One validation-tooling bug found and fixed:** the initial HAMPR dump driver omitted the
 `target_rd[1] -= (rows-1)/2` shift that `Pipeline::process` (and the benchmark) apply
 before metric extraction; without it, `MetricExtractor::extract_snr` read out of bounds.
@@ -304,6 +375,7 @@ no divergence.
 | test_multi_site        | 17 | PASS (17/17) |
 | test_phase8            | 1 | PASS |
 | test_phase6            | 1 | PASS |
+| numerical_dump         | 5 | PASS |
 
 `test_numerical_regression` (final-output strict checks):
 
