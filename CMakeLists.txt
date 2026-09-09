@@ -123,6 +123,9 @@ if(HAMPR_BUILD_TESTS)
     add_executable(test_phase6 tests/test_phase6.cpp)
     target_link_libraries(test_phase6 PRIVATE hampr)
     add_test(NAME test_phase6 COMMAND test_phase6)
+    add_executable(numerical_dump tests/numerical_dump.cpp)
+    target_link_libraries(numerical_dump PRIVATE hampr)
+    add_test(NAME numerical_dump COMMAND numerical_dump ${CMAKE_BINARY_DIR}/val_results/hampr)
 endif()
 
 install(TARGETS hampr

@@ -1,16 +1,27 @@
 # Build artifacts
 build/
+wsl_build/
 *.o
 *.o.d
+*.a
+*.so
+*.so.*
+*.dll
+*.dylib
 
-# Executables
-*.exe
-benchmark_app
-test_core
-test_dsp
-test_dsp_extended
-test_regression
-test_accel
+# Validation output
+val_results/
+
+# Code directory (not part of this repo)
+Code/
+
+# Benchmark build artifacts
+passiveradar/*.o
+passiveradar/passive
+passiveradar/passive.exe
+
+# Archives
+*.zip
 
 # IDE files
 .vscode/
@@ -18,10 +29,23 @@ test_accel
 *.swp
 *.swo
 *~
+.vs/
 
 # OS files
 .DS_Store
 Thumbs.db
-wsl_build/
+desktop.ini
 
-test_multi_site
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Temp files
+tmp_*
+*.tmp
+*.ps1
+
+# Ref directory (reference implementations, not part of this repo)
+Ref/
