@@ -20,7 +20,6 @@ std::vector<MultiSiteResult> MultiSiteGraph::process_stream(
     if (track.empty())
         return results;
 
-    const auto& ref_track = track.front();
     source.reset_all();
     size_t batch_idx = 0;
 

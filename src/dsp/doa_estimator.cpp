@@ -60,7 +60,7 @@ array DOAEstimator::doa_music(const mat& R,
     // Sort by eigenvalue magnitude (ascending)
     std::vector<std::pair<double, array>> eig_pairs(M);
     for (int i = 0; i < M; ++i) {
-        eig_pairs[i].first = vals[i].real() + vals[i].imag();
+        eig_pairs[i].first = std::abs(vals[i]);
         eig_pairs[i].second = array(M);
         for (int j = 0; j < M; ++j)
             eig_pairs[i].second[j] = vecs.row(j)[i];
@@ -111,7 +111,7 @@ array DOAEstimator::doa_music_fb(const FlatBuffer& R,
     // Sort by eigenvalue magnitude (ascending)
     std::vector<std::pair<double, array>> eig_pairs(M);
     for (int i = 0; i < M; ++i) {
-        eig_pairs[i].first = eigenvalues[i].real() + eigenvalues[i].imag();
+        eig_pairs[i].first = std::abs(eigenvalues[i]);
         eig_pairs[i].second = array(M);
         for (int j = 0; j < M; ++j)
             eig_pairs[i].second[j] = eigenvectors[j][i];

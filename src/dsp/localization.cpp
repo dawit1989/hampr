@@ -40,6 +40,7 @@ void TDoALocalizer::ecef_to_wgs84(double x, double y, double z,
 }
 
 double TDoALocalizer::estimate_tdoa(const IQBuffer& ref_a, const IQBuffer& ref_b, double fs) {
+    (void)fs;
     int N = std::min(static_cast<int>(ref_a.size()), static_cast<int>(ref_b.size()));
     if (N < 2)
         return 0.0;
@@ -198,7 +199,6 @@ TDoALocalizer::GeoResult TDoALocalizer::localize(const SynchronizedBatch& batch,
         return result;
 
     double fs = batch.fs;
-    const auto& ref_track = track.front();
 
     // Estimate TDOA for each site pair (relative to site 0)
     std::vector<double> tdoa_samples;
