@@ -19,8 +19,8 @@ CMake target). `tests/test_numerical_regression.cpp` is the final-output regress
 ## Requirements
 
 - WSL2 / Linux with g++ 13, cmake, system FFTW3.
-- Benchmark at `../passiveradar` (pre-built `*.o` + bundled `fftw/`).
-- VEGA data at `../passiveradar_data/dataset` (datasets 494–498).
+- Benchmark at `Code/passiveradar` (pre-built `*.o` + bundled `fftw/`).
+- VEGA data at `Code/passiveradar_data/dataset` (datasets 494–498).
 
 ## Run
 
